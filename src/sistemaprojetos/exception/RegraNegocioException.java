@@ -1,5 +1,5 @@
 package sistemaprojetos.exception;
 
-public class RegraNegocioException {
-
+public class RegraNegocioException extends SistemaException{
+	public RegraNegocioException(String mensagem) { super(mensagem); }
 }
