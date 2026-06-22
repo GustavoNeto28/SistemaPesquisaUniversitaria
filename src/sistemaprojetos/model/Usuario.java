@@ -5,7 +5,7 @@ public abstract class Usuario implements Imprimivel {
     protected int id;
     protected String nome;
     protected String email;
-    protected String senha; // Novo atributo
+    protected String senha;
     protected boolean ativo;
 
     public Usuario(String nome, String email, String senha) {

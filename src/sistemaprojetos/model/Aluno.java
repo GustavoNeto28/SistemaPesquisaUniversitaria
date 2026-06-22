@@ -16,14 +16,16 @@ public class Aluno extends Usuario {
 
     public void adicionarAoHistorico(Projeto p) { historicoProjetos.add(p); }
     
-    public void exibirHistorico() {
-        System.out.println("\n--- Histórico de Projetos ---");
+    public String obterHistoricoTexto() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- Histórico de Projetos ---\n\n");
         if (historicoProjetos.isEmpty()) {
-            System.out.println("Nenhum projeto no histórico.");
+            sb.append("Nenhum projeto no histórico.");
         } else {
             for (Projeto p : historicoProjetos) {
-                System.out.println("- " + p.getId() + " | Área: " + p.getAreaEstudo());
+                sb.append("- ID: ").append(p.getId()).append(" | Área: ").append(p.getAreaEstudo()).append("\n");
             }
         }
+        return sb.toString();
     }
 }

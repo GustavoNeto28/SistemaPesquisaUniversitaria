@@ -14,8 +14,6 @@ public class SistemaGerenciamento {
     private SistemaGerenciamento() {
         usuarios = new ArrayList<>();
         projetos = new ArrayList<>();
-        
-        // Coordenador Padrão (Login único e imutável no início)
         usuarios.add(new Coordenador("Admin", "admin", "admin123"));
     }
 
@@ -26,7 +24,6 @@ public class SistemaGerenciamento {
         return instancia;
     }
 
-    // --- AUTENTICAÇÃO ---
     public Usuario fazerLogin(String email, String senha) throws RegraNegocioException {
         for (Usuario u : usuarios) {
             if (u.getEmail().equalsIgnoreCase(email) && u.validarSenha(senha)) {
@@ -39,43 +36,29 @@ public class SistemaGerenciamento {
         throw new RegraNegocioException("Email ou senha incorretos.");
     }
 
-    public void cadastrarUsuario(Usuario u) {
-        // Verifica se o email já existe
+    public void cadastrarUsuario(Usuario u) throws RegraNegocioException {
         for (Usuario existente : usuarios) {
             if (existente.getEmail().equalsIgnoreCase(u.getEmail())) {
-                System.err.println("Erro: Já existe um usuário com este email.");
-                return;
+                throw new RegraNegocioException("Já existe um usuário com este email.");
             }
         }
         usuarios.add(u);
-        System.out.println("Cadastro realizado com sucesso!");
     }
 
-    // --- PROJETOS ---
-    public void criarProjeto(Usuario solicitante, String titulo, String area, Professor orientador, int vagas) {
-        try {
-            if (!(solicitante instanceof Professor) && !(solicitante instanceof Coordenador)) {
-                throw new AcessoNegadoException("Apenas Professores ou Coordenadores podem criar projetos.");
-            }
-            Projeto novoProjeto = new Projeto(titulo, area, orientador, vagas);
-            projetos.add(novoProjeto);
-            System.out.println("Projeto '" + titulo + "' criado com sucesso!");
-        } catch (AcessoNegadoException e) {
-            System.err.println("Erro de Permissão: " + e.getMessage());
+    public void criarProjeto(Usuario solicitante, String titulo, String area, Professor orientador, int vagas) throws AcessoNegadoException {
+        if (!(solicitante instanceof Professor) && !(solicitante instanceof Coordenador)) {
+            throw new AcessoNegadoException("Apenas Professores ou Coordenadores podem criar projetos.");
         }
+        Projeto novoProjeto = new Projeto(titulo, area, orientador, vagas);
+        projetos.add(novoProjeto);
     }
 
-    public void solicitarParticipacao(Aluno aluno, int idProjeto) {
-        try {
-            Projeto projeto = buscarProjetoPorId(idProjeto);
-            if (projeto == null) {
-                throw new RegraNegocioException("Projeto não encontrado.");
-            }
-            projeto.adicionarParticipante(aluno);
-            System.out.println("Sucesso: " + aluno.getNome() + " ingressou no projeto '" + projeto.getId() + "'.");
-        } catch (RegraNegocioException e) {
-            System.err.println("Erro: " + e.getMessage());
+    public void solicitarParticipacao(Aluno aluno, int idProjeto) throws RegraNegocioException {
+        Projeto projeto = buscarProjetoPorId(idProjeto);
+        if (projeto == null) {
+            throw new RegraNegocioException("Projeto não encontrado.");
         }
+        projeto.adicionarParticipante(aluno);
     }
 
     private Projeto buscarProjetoPorId(int id) {
@@ -85,63 +68,64 @@ public class SistemaGerenciamento {
         return null;
     }
 
-    // --- LISTAGENS E GERENCIAMENTO ---
-    public void listarProjetosDisponiveis() {
-        System.out.println("\n--- Projetos Disponíveis ---");
+    public String listarProjetosDisponiveis() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- Projetos Disponíveis ---\n\n");
         boolean achou = false;
         for (Projeto p : projetos) {
             if (p.getStatus().equals(Projeto.STATUS_ABERTO)) {
-                p.exibirDetalhes();
+                sb.append("ID: ").append(p.getId())
+                  .append(" | Área: ").append(p.getAreaEstudo()).append("\n");
                 achou = true;
             }
         }
-        if (!achou) System.out.println("Nenhum projeto com vagas abertas no momento.");
+        if (!achou) sb.append("Nenhum projeto com vagas abertas no momento.\n");
+        return sb.toString();
     }
     
-    public void listarTodosUsuarios(Usuario solicitante) {
-        if (solicitante instanceof Coordenador) {
-            System.out.println("\n--- Lista de Usuários ---");
-            for (Usuario u : usuarios) {
-                u.exibirDetalhes();
-            }
-        } else {
-            System.err.println("Acesso Negado.");
+    public String listarTodosUsuarios(Usuario solicitante) throws AcessoNegadoException {
+        if (!(solicitante instanceof Coordenador)) {
+            throw new AcessoNegadoException("Acesso Negado.");
         }
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- Lista de Usuários ---\n\n");
+        for (Usuario u : usuarios) {
+            sb.append("[").append(u.getTipoUsuario()).append("] ID: ").append(u.getId())
+              .append(" | ").append(u.getNome()).append(" (").append(u.getEmail())
+              .append(") - Ativo: ").append(u.isAtivo() ? "Sim" : "Não").append("\n");
+        }
+        return sb.toString();
     }
 
-    public void alterarStatusUsuario(Usuario solicitante, int idUsuario) {
+    public void alterarStatusUsuario(Usuario solicitante, int idUsuario) throws AcessoNegadoException, RegraNegocioException {
         if (!(solicitante instanceof Coordenador)) {
-            System.err.println("Acesso Negado.");
-            return;
+            throw new AcessoNegadoException("Acesso Negado.");
         }
         for (Usuario u : usuarios) {
             if (u.getId() == idUsuario) {
                 if (u instanceof Coordenador) {
-                    System.err.println("Não é possível alterar o status do coordenador geral.");
-                    return;
+                    throw new RegraNegocioException("Não é possível alterar o status do coordenador geral.");
                 }
                 u.setAtivo(!u.isAtivo());
-                System.out.println("Status do usuário alterado com sucesso! Ativo: " + u.isAtivo());
                 return;
             }
         }
-        System.err.println("Usuário não encontrado.");
+        throw new RegraNegocioException("Usuário não encontrado.");
     }
 
-    public void imprimirEstatisticasGerais(Usuario solicitante) {
+    public String imprimirEstatisticasGerais(Usuario solicitante) throws AcessoNegadoException {
         if (!(solicitante instanceof Coordenador)) {
-            System.err.println("Acesso Negado.");
-            return;
+            throw new AcessoNegadoException("Acesso Negado.");
         }
-        System.out.println("\n--- Estatísticas Gerais do Sistema ---");
-        System.out.println("Total de Projetos: " + projetos.size());
-        System.out.println("Total de Usuários Cadastrados: " + usuarios.size());
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- Estatísticas Gerais do Sistema ---\n\n");
+        sb.append("Total de Projetos: ").append(projetos.size()).append("\n");
+        sb.append("Total de Usuários Cadastrados: ").append(usuarios.size()).append("\n");
         long profsAtivos = usuarios.stream().filter(u -> u instanceof Professor && u.isAtivo()).count();
-        System.out.println("Professores Ativos: " + profsAtivos);
-        System.out.println("--------------------------------------\n");
+        sb.append("Professores Ativos: ").append(profsAtivos).append("\n");
+        return sb.toString();
     }
     
-    // Auxiliar para a UI encontrar professor ao criar projeto
     public Professor buscarProfessor(String nomeProfessor) {
         for (Usuario u : usuarios) {
             if (u instanceof Professor && u.getNome().equalsIgnoreCase(nomeProfessor)) {
